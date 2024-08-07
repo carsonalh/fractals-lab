@@ -1,51 +1,32 @@
+import torch
 import matplotlib.pyplot as plt
 import numpy as np
 
-x0 = np.array([0, 0, 0])
-x1 = np.array([1, 0, 0])
-points = [x0, x1]
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-a = np.vstack((x0, x1))
-x = a[:, 0]
-y = a[:, 1]
+points: torch.Tensor = torch.Tensor([[0, 0, 0], [1, 0, 0]]).to(device)
 
-fig = plt.figure()
-ax = fig.add_subplot(111)
-line, = ax.plot(x, y)
-fig.canvas.draw()
-fig.canvas.flush_events()
-
-#plt.xlabel('x')
-#plt.ylabel('y')
-#plt.show()
-
-K = np.array([0, 0, 1])
+RANDOM = False
+BULGE_RATIO = .25
+K = torch.Tensor([[0, 0, 1]]).to(device)
 for _ in range(18):
-    newpoints = []
-    for x0, x1 in zip(points, points[1:]):
-        xm = (x0 + x1) / 2
-        direction = (x1 - x0) / 4.5
-        sign = 1 if np.random.random() < 0.01 else -1
-        xnew = xm + sign * np.cross(K, direction)
-        newpoints.append(x0)
-        newpoints.append(xnew)
-    newpoints.append(points[-1])
-    #a = np.vstack(newpoints)
-    #x = a[:, 0]
-    #y = a[:, 1]
-    #line.set_xdata(x)
-    #line.set_ydata(y)
-    #fig.canvas.draw()
-    #fig.canvas.flush_events()
-    points = newpoints
-    #print(points)
+    points0 = points[:-1]
+    points1 = points[1:]
 
-a = np.vstack(points)
-x = a[:, 0]
-y = a[:, 1]
+    midpoints = (points0 + points1) / 2
+    tangents = points1 - points0
+    normals = torch.cross(K, tangents, dim=1)
+    if RANDOM:
+        directions = (torch.ones(normals.shape) > 0.5) * 2 - 1
+        new_points = midpoints + BULGE_RATIO * directions * normals
+    else:
+        new_points = midpoints + BULGE_RATIO * normals
+    points = torch.stack((points0, new_points), dim=1).reshape((2 * len(points0), 3))
+    points = torch.concat((points, points1[-1].reshape((1, 3))), dim=0)
+
+x = points[:, 0].squeeze().cpu().numpy()
+y = points[:, 1].squeeze().cpu().numpy()
 
 plt.plot(x, y)
 plt.axis('equal')
 plt.show()
-
-#print(points)
