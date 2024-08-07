@@ -1,51 +1,31 @@
 import torch
-import numpy as np
 import matplotlib.pyplot as plt
-import sys
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-x, y = None, None
-iterations = None
+ITERATIONS = 100
+ZOOMED = True
 
-if len(sys.argv) <= 1:
-    y, x = np.mgrid[-1.3:1.3:0.005, -2:1:0.005]
-    iterations = 1_000
-elif sys.argv[1] == 'zoomin':
-    CENTER_X = 0.044401390345897934
-    CENTER_Y = -1.3493269980029505
-    WIDTH = 0.007587548048614279
-    step = WIDTH / 600
-    iterations = 10_000
+if ZOOMED:
+    re = -0.618321484624953
+    im = -0.46529110341576707
+    width = 0.04400693669561717
+    x_values = torch.linspace(re - width / 2, re + width / 2, 2_000)
+    y_values = torch.linspace(im - width / 2, im + width / 2, 2_000)
+    x, y = torch.meshgrid(x_values, y_values)
 
-    y, x = np.mgrid[(CENTER_X - WIDTH / 2):(CENTER_X + WIDTH / 2):step, (CENTER_Y - WIDTH / 2):(CENTER_Y + WIDTH / 2):step]
-
-assert x is not None
-assert y is not None
-assert iterations is not None
-
-x, y = torch.Tensor(x), torch.Tensor(y)
+else:
+    points = torch.linspace(-2, 2, 2_000)
+    x, y = torch.meshgrid(points, points)
 
 c = torch.complex(x, y).to(device)
 z = torch.zeros_like(c).to(device)
-
 n = torch.zeros_like(x).to(device)
 
-for _ in range(iterations):
+for _ in range(ITERATIONS):
     z = z * z + c
-    n += torch.abs(z) < 4.0
+    n += torch.abs(z) > 2
 
-def processFractal(a):
-    """Display an array of iteration counts as a
-    colorful picture of a fractal."""
-    a_cyclic = (6.28*a/20.0).reshape(list(a.shape)+[1])
-    img = np.concatenate([10+20*np.cos(a_cyclic),
-    30+50*np.sin(a_cyclic),
-    155-80*np.cos(a_cyclic)], 2)
-    img[a==a.max()] = 0
-    a = img
-    a = np.uint8(np.clip(a, 0, 255))
-    return a
-
-plt.imshow(processFractal(n.cpu().numpy()))
+plt.imshow(n.t().flip((0,)).cpu().numpy(), cmap='gnuplot')
 plt.show()
+
