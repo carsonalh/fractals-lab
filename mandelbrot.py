@@ -12,7 +12,7 @@ if ZOOMED:
     width = 0.04400693669561717
     x_values = torch.linspace(re - width / 2, re + width / 2, 2_000)
     y_values = torch.linspace(im - width / 2, im + width / 2, 2_000)
-    x, y = torch.meshgrid(x_values, y_values)
+    x, y = torch.meshgrid(x_values, y_values, indexing='ij')
 
 else:
     points = torch.linspace(-2, 2, 2_000)
@@ -24,7 +24,7 @@ n = torch.zeros_like(x).to(device)
 
 for _ in range(ITERATIONS):
     z = z * z + c
-    n += torch.abs(z) > 2
+    n += torch.abs(z) < 2
 
 plt.imshow(n.t().flip((0,)).cpu().numpy(), cmap='gnuplot')
 plt.show()
